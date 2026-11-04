@@ -1,21 +1,32 @@
-// Configuração e inicialização correta do cliente Supabase no navegador
+// Configuração do Supabase
 const SUPABASE_URL = "https://cniinrbzytatalowiqnm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_nMYJ1kNcm61VCj6qPHUVqw_5z-q-iRJ";
 const JOGO_ID = 1;
 
-// Inicializa o cliente único do Supabase
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Inicialização segura do cliente Supabase usando outro identificador
+let supabaseClient = null;
+try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+} catch (e) {
+    console.error("Erro ao inicializar Supabase:", e);
+}
 
 function formatarMoeda(valor) {
     return "R$ " + Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Função principal que busca e exibe o ranking no site
+// Função para buscar e renderizar o ranking
 async function carregarRanking() {
     const containerTabela = document.querySelector("tbody") || document.getElementById("ranking-corpo");
-    const statusCarregamento = document.getElementById("status-carregamento") || document.querySelector(".card-ranking") || document.body;
     
-    console.log("A carregar ranking do Supabase...");
+    if (!supabaseClient) {
+        if (containerTabela) {
+            containerTabela.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Erro: Biblioteca do Supabase não carregada.</td></tr>`;
+        }
+        return;
+    }
 
     try {
         const { data: partidas, error } = await supabaseClient
@@ -23,20 +34,16 @@ async function carregarRanking() {
             .select('*')
             .eq('jogo_id', JOGO_ID);
 
-        if (error) {
-            console.error("Erro do Supabase:", error);
-            throw error;
-        }
+        if (error) throw error;
 
         if (!partidas || partidas.length === 0) {
-            console.log("Nenhum registo encontrado.");
             if (containerTabela) {
-                containerTabela.innerHTML = `<tr><td colspan="4" style="text-align:center;">Nenhum jogo registado ainda. Jogue pelo Python para aparecer aqui!</td></tr>`;
+                containerTabela.innerHTML = `<tr><td colspan="4" style="text-align:center;">Nenhum jogo registado ainda. Jogue pelo Python!</td></tr>`;
             }
             return;
         }
 
-        // Lógica de desempate e agrupamento por melhor pontuação do jogador
+        // Agrupa por apelido (pega a melhor partida de cada jogador)
         const melhores = {};
         partidas.forEach(p => {
             const ap = p.apelido;
@@ -50,14 +57,14 @@ async function carregarRanking() {
             }
         });
 
-        // Ordena por maior prêmio e menor tempo
+        // Ordena por prêmio e tempo
         const ranking = Object.values(melhores).sort((a, b) => {
             const diffPremio = parseFloat(b.valor_ganho) - parseFloat(a.valor_ganho);
             if (diffPremio !== 0) return diffPremio;
             return parseFloat(a.tempo_segundos) - parseFloat(b.tempo_segundos);
         });
 
-        // Monta as linhas na tabela HTML do site
+        // Renderiza no HTML
         if (containerTabela) {
             containerTabela.innerHTML = "";
             ranking.slice(0, 10).forEach((p, index) => {
@@ -71,14 +78,21 @@ async function carregarRanking() {
                 containerTabela.appendChild(tr);
             });
         }
-        console.log("Ranking atualizado com sucesso!");
-
     } catch (err) {
-        console.error("Falha ao carregar ranking:", err);
+        console.error("Falha ao consultar banco:", err);
+        if (containerTabela) {
+            containerTabela.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar dados do banco.</td></tr>`;
+        }
     }
 }
 
-// Carrega automaticamente ao abrir a página
-window.onload = () => {
+// Executa ao carregar a página e mapeia o botão de atualização
+window.addEventListener('DOMContentLoaded', () => {
     carregarRanking();
-};
+    
+    // Se houver um botão de atualizar, garante o evento de clique
+    const btnAtualizar = document.querySelector("button");
+    if (btnAtualizar) {
+        btnAtualizar.addEventListener('click', carregarRanking);
+    }
+});
