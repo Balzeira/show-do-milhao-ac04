@@ -1,110 +1,84 @@
+// Configuração e inicialização correta do cliente Supabase no navegador
 const SUPABASE_URL = "https://cniinrbzytatalowiqnm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_nMYJ1kNcm61VCj6qPHUVqw_5z-q-iRJ";
+const JOGO_ID = 1;
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Inicializa o cliente único do Supabase
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 function formatarMoeda(valor) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+    return "R$ " + Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function formatarTempo(segundos) {
-    const mins = Math.floor(segundos / 60);
-    const segs = Math.floor(segundos % 60);
-    return mins > 0 ? `${mins}m ${segs}s` : `${segs}s`;
-}
-
-function formatarData(isoString) {
-    if (!isoString) return "-";
-    return new Date(isoString).toLocaleString('pt-BR');
-}
-
+// Função principal que busca e exibe o ranking no site
 async function carregarRanking() {
-    const loadingEl = document.getElementById('loading');
-    const errorEl = document.getElementById('error');
-    const emptyEl = document.getElementById('empty');
-    const tableEl = document.getElementById('rankingTable');
-    const tbodyEl = document.getElementById('rankingBody');
-
-    loadingEl.classList.remove('hidden');
-    errorEl.classList.add('hidden');
-    emptyEl.classList.add('hidden');
-    tableEl.classList.add('hidden');
-    tbodyEl.innerHTML = '';
+    const containerTabela = document.querySelector("tbody") || document.getElementById("ranking-corpo");
+    const statusCarregamento = document.getElementById("status-carregamento") || document.querySelector(".card-ranking") || document.body;
+    
+    console.log("A carregar ranking do Supabase...");
 
     try {
-        const { data: partidas, error } = await supabase
+        const { data: partidas, error } = await supabaseClient
             .from('partidas')
             .select('*')
-            .eq('jogo_id', 1);
+            .eq('jogo_id', JOGO_ID);
 
-        if (error) throw error;
+        if (error) {
+            console.error("Erro do Supabase:", error);
+            throw error;
+        }
 
         if (!partidas || partidas.length === 0) {
-            loadingEl.classList.add('hidden');
-            emptyEl.classList.remove('hidden');
+            console.log("Nenhum registo encontrado.");
+            if (containerTabela) {
+                containerTabela.innerHTML = `<tr><td colspan="4" style="text-align:center;">Nenhum jogo registado ainda. Jogue pelo Python para aparecer aqui!</td></tr>`;
+            }
             return;
         }
 
-        // Filtra para manter apenas a melhor partida de cada apelido
-        const melhoresPartidas = {};
+        // Lógica de desempate e agrupamento por melhor pontuação do jogador
+        const melhores = {};
         partidas.forEach(p => {
-            const apelido = p.apelido;
-            if (!melhoresPartidas[apelido]) {
-                melhoresPartidas[apelido] = p;
-            } else {
-                const atual = melhoresPartidas[apelido];
-                const vNovo = parseFloat(p.valor_ganho);
-                const vAtual = parseFloat(atual.valor_ganho);
-                const tNovo = parseFloat(p.tempo_segundos);
-                const tAtual = parseFloat(atual.tempo_segundos);
-                const dNovo = new Date(p.data_hora);
-                const dAtual = new Date(atual.data_hora);
+            const ap = p.apelido;
+            const valor = parseFloat(p.valor_ganho);
+            const tempo = parseFloat(p.tempo_segundos);
 
-                if (vNovo > vAtual) {
-                    melhoresPartidas[apelido] = p;
-                } else if (vNovo === vAtual) {
-                    if (tNovo < tAtual) {
-                        melhoresPartidas[apelido] = p;
-                    } else if (tNovo === tAtual && dNovo < dAtual) {
-                        melhoresPartidas[apelido] = p;
-                    }
-                }
+            if (!melhores[ap] || 
+                valor > parseFloat(melhores[ap].valor_ganho) || 
+                (valor === parseFloat(melhores[ap].valor_ganho) && tempo < parseFloat(melhores[ap].tempo_segundos))) {
+                melhores[ap] = p;
             }
         });
 
-        // Ordenação estrita: Maior Prêmio -> Menor Tempo -> Data mais antiga
-        const rankingOrdenado = Object.values(melhoresPartidas).sort((a, b) => {
-            if (b.valor_ganho !== a.valor_ganho) return b.valor_ganho - a.valor_ganho;
-            if (a.tempo_segundos !== b.tempo_segundos) return a.tempo_segundos - b.tempo_segundos;
-            return new Date(a.data_hora) - new Date(b.data_hora);
+        // Ordena por maior prêmio e menor tempo
+        const ranking = Object.values(melhores).sort((a, b) => {
+            const diffPremio = parseFloat(b.valor_ganho) - parseFloat(a.valor_ganho);
+            if (diffPremio !== 0) return diffPremio;
+            return parseFloat(a.tempo_segundos) - parseFloat(b.tempo_segundos);
         });
 
-        const top10 = rankingOrdenado.slice(0, 10);
-
-        top10.forEach((p, index) => {
-            const tr = document.createElement('tr');
-            const pos = index + 1;
-            let posClass = pos === 1 ? "posicao-1" : pos === 2 ? "posicao-2" : pos === 3 ? "posicao-3" : "";
-
-            tr.innerHTML = `
-                <td class="${posClass}">${pos}º</td>
-                <td><strong>${p.apelido}</strong></td>
-                <td>${formatarMoeda(p.valor_ganho)}</td>
-                <td>${formatarTempo(p.tempo_segundos)}</td>
-                <td>${formatarData(p.data_hora)}</td>
-            `;
-            tbodyEl.appendChild(tr);
-        });
-
-        loadingEl.classList.add('hidden');
-        tableEl.classList.remove('hidden');
+        // Monta as linhas na tabela HTML do site
+        if (containerTabela) {
+            containerTabela.innerHTML = "";
+            ranking.slice(0, 10).forEach((p, index) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${index + 1}º</td>
+                    <td>${p.apelido}</td>
+                    <td>${formatarMoeda(p.valor_ganho)}</td>
+                    <td>${p.tempo_segundos}s</td>
+                `;
+                containerTabela.appendChild(tr);
+            });
+        }
+        console.log("Ranking atualizado com sucesso!");
 
     } catch (err) {
-        console.error(err);
-        loadingEl.classList.add('hidden');
-        errorEl.textContent = `Falha ao carregar ranking: ${err.message || err}`;
-        errorEl.classList.remove('hidden');
+        console.error("Falha ao carregar ranking:", err);
     }
 }
 
-document.addEventListener('DOMContentLoaded', carregarRanking);
+// Carrega automaticamente ao abrir a página
+window.onload = () => {
+    carregarRanking();
+};
