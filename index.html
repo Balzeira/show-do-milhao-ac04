@@ -1,47 +1,45 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ranking - Show do Milhão Python</title>
+    <title>Ranking Oficial - Show do Milhão</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🏆 Ranking Oficial - Show do Milhão</h1>
-            <p>Resultados em tempo real consultados do banco online</p>
-        </header>
+    <div class="card-ranking">
+        <h1>🏆 Ranking Oficial - Show do Milhão</h1>
+        <p>Resultados em tempo real consultados do banco online</p>
 
-        <section class="controls">
-            <button id="btnAtualizar" onclick="carregarRanking()">🔄 Atualizar Ranking</button>
-        </section>
+        <button id="btn-atualizar" class="btn-atualizar">🔄 Atualizar Ranking</button>
 
-        <section class="ranking-table-container">
-            <div id="loading" class="status-msg">Carregando dados...</div>
-            <div id="error" class="status-msg error hidden"></div>
-            <div id="empty" class="status-msg hidden">Nenhum registro encontrado.</div>
-
-            <table id="rankingTable" class="hidden">
+        <div class="tabela-container">
+            <table class="tabela-ranking">
                 <thead>
                     <tr>
-                        <th>Posição</th>
-                        <th>Apelido</th>
-                        <th>Valor Ganho</th>
-                        <th>Tempo de Jogo</th>
-                        <th>Data / Hora</th>
+                        <th>Pos</th>
+                        <th>Jogador</th>
+                        <th>Prêmio</th>
+                        <th>Tempo</th>
                     </tr>
                 </thead>
-                <tbody id="rankingBody"></tbody>
+                <tbody id="ranking-corpo">
+                    <tr>
+                        <td colspan="4" style="text-align:center;">Carregando dados...</td>
+                    </tr>
+                </tbody>
             </table>
-        </section>
+        </div>
 
         <footer>
             <p>Desenvolvido para a Atividade Contínua (AC04) - Algoritmos e Programação</p>
         </footer>
     </div>
 
+    <!-- 1. Biblioteca oficial do Supabase via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 2. O seu ficheiro de script atualizado -->
     <script src="script.js"></script>
 </body>
 </html>
