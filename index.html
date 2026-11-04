@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Ranking - Show do Milhão</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 Ranking Oficial - Show do Milhão</h1>
+        <button onclick="carregarRanking()">🔄 Atualizar</button>
+        <table id="rankingTable">
+            <thead><tr><th>Posição</th><th>Apelido</th><th>Prêmio</th><th>Tempo</th></tr></thead>
+            <tbody id="rankingBody"></tbody>
+        </table>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
