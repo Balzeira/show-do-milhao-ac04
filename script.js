@@ -3,47 +3,44 @@ const SUPABASE_URL = "https://cniinrbzytatalowiqnm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_nMYJ1kNcm61VCj6qPHUVqw_5z-q-iRJ";
 const JOGO_ID = 1;
 
-let supabaseClient = null;
-try {
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
-} catch (e) {
-    console.error("Erro ao inicializar Supabase:", e);
-}
-
 function formatarMoeda(valor) {
     return "R$ " + Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 async function carregarRanking() {
-    console.log("A carregar ranking do Supabase...");
-    
-    // Procura o tbody de várias formas possíveis para garantir que encontra
+    console.log("A consultar dados no Supabase...");
     const tbody = document.getElementById("ranking-corpo") || document.querySelector("tbody");
 
-    if (!supabaseClient) {
-        console.error("Cliente Supabase não inicializado.");
-        return;
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Carregando dados...</td></tr>`;
     }
 
     try {
-        const { data: partidas, error } = await supabaseClient
-            .from('partidas')
-            .select('*')
-            .eq('jogo_id', JOGO_ID);
+        // Consulta direta via fetch (API REST do Supabase - totalmente à prova de falhas de CDN)
+        const url = `${SUPABASE_URL}/rest/v1/partidas?jogo_id=eq.${JOGO_ID}&select=*`;
+        
+        const resposta = await fetch(url, {
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`
+            }
+        });
 
-        if (error) throw error;
+        if (!resposta.ok) {
+            throw new Error(`Erro HTTP: ${resposta.status}`);
+        }
+
+        const partidas = await resposta.json();
+        console.log("Dados recebidos:", partidas);
 
         if (!partidas || partidas.length === 0) {
-            console.log("Nenhum registo encontrado.");
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Nenhum jogo registado ainda.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Nenhum jogo registado ainda. Jogue pelo Python!</td></tr>`;
             }
             return;
         }
 
-        // Agrupa por apelido (pega a melhor partida)
+        // Agrupa por apelido (pega a melhor partida de cada jogador)
         const melhores = {};
         partidas.forEach(p => {
             const ap = p.apelido;
@@ -57,12 +54,14 @@ async function carregarRanking() {
             }
         });
 
+        // Ordena por maior prêmio e menor tempo
         const ranking = Object.values(melhores).sort((a, b) => {
             const diffPremio = parseFloat(b.valor_ganho) - parseFloat(a.valor_ganho);
             if (diffPremio !== 0) return diffPremio;
             return parseFloat(a.tempo_segundos) - parseFloat(b.tempo_segundos);
         });
 
+        // Preenche a tabela no site
         if (tbody) {
             tbody.innerHTML = "";
             ranking.slice(0, 10).forEach((p, index) => {
@@ -79,18 +78,20 @@ async function carregarRanking() {
         console.log("Ranking atualizado com sucesso!");
 
     } catch (err) {
-        console.error("Falha ao consultar banco:", err);
+        console.error("Falha ao carregar ranking:", err);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar dados.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Erro ao ligar ao servidor.</td></tr>`;
         }
     }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    carregarRanking();
-    
+// Carrega automaticamente ao abrir a página
+carregarRanking();
+
+// Configura o botão de atualizar
+setTimeout(() => {
     const btn = document.getElementById("btn-atualizar") || document.querySelector("button");
     if (btn) {
-        btn.addEventListener('click', carregarRanking);
+        btn.onclick = carregarRanking;
     }
-});
+}, 500);
