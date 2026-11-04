@@ -2,19 +2,46 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Ranking - Show do Milhão</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - Show do Milhão Python</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
-        <h1>🏆 Ranking Oficial - Show do Milhão</h1>
-        <button onclick="carregarRanking()">🔄 Atualizar</button>
-        <table id="rankingTable">
-            <thead><tr><th>Posição</th><th>Apelido</th><th>Prêmio</th><th>Tempo</th></tr></thead>
-            <tbody id="rankingBody"></tbody>
-        </table>
+        <header>
+            <h1>🏆 Ranking Oficial - Show do Milhão</h1>
+            <p>Resultados em tempo real consultados do banco online</p>
+        </header>
+
+        <section class="controls">
+            <button id="btnAtualizar" onclick="carregarRanking()">🔄 Atualizar Ranking</button>
+        </section>
+
+        <section class="ranking-table-container">
+            <div id="loading" class="status-msg">Carregando dados...</div>
+            <div id="error" class="status-msg error hidden"></div>
+            <div id="empty" class="status-msg hidden">Nenhum registro encontrado.</div>
+
+            <table id="rankingTable" class="hidden">
+                <thead>
+                    <tr>
+                        <th>Posição</th>
+                        <th>Apelido</th>
+                        <th>Valor Ganho</th>
+                        <th>Tempo de Jogo</th>
+                        <th>Data / Hora</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingBody"></tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p>Desenvolvido para a Atividade Contínua (AC04) - Algoritmos e Programação</p>
+        </footer>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
